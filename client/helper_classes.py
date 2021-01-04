@@ -96,7 +96,8 @@ class Unit:
             unit = enemy_units.get_unit(id)
             direction = self.direction_to((unit.x, unit.y))
             check_coord = coordinate_from_direction(self.x, self.y, direction)
-            check_coord2 = coordinate_from_direction(check_coord[0], check_coord[1], direction)
+            check_coord2 = coordinate_from_direction(
+                check_coord[0], check_coord[1], direction)
             if check_coord == \
                     (unit.x, unit.y):
                 enemies.append((unit, [direction]))
