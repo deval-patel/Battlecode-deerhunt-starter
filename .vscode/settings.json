@@ -1,0 +1,5 @@
+{
+    "python.pythonPath": "/home/deval/anaconda3/bin/python",
+    "python.linting.pycodestyleEnabled": true,
+    "python.linting.enabled": true
+}
