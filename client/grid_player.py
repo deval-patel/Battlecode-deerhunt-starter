@@ -55,5 +55,3 @@ class GridPlayer:
                 return True
         return False
         
-
-
