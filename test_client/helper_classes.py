@@ -96,7 +96,8 @@ class Unit:
             unit = enemy_units.get_unit(id)
             direction = self.direction_to((unit.x, unit.y))
             check_coord = coordinate_from_direction(self.x, self.y, direction)
-            check_coord2 = coordinate_from_direction(check_coord[0], check_coord[1], direction)
+            check_coord2 = coordinate_from_direction(
+                check_coord[0], check_coord[1], direction)
             if check_coord == \
                     (unit.x, unit.y):
                 enemies.append((unit, [direction]))
@@ -126,7 +127,7 @@ class Unit:
         else:
             return False
 
-    def mine(self) -> None:
+    def mine(self) -> Move:
         """
         Returns a 'mine' Move for this Unit.
         """
@@ -154,6 +155,9 @@ class Map:
                        y >= 0
         """
         return self.grid[y][x]
+
+    def set_tile(self, x:int, y:int, token: str):
+        self.grid[y][x] = token
 
     def is_wall(self, x: int, y: int) -> bool:
         """
@@ -198,6 +202,29 @@ class Map:
                 result = (c_2, r_2)
                 so_far = dist
         return result
+
+    def closest_resources_all(self, unit: Unit) -> [(int, int)]:
+        """
+        Returns the coordinates of the resources from closest to furthest to <unit>
+        """
+        locations = self.find_all_resources()
+        c, r = unit.position()
+        result = None
+        distances = {}
+        for (c_2, r_2) in locations:
+            dc = c_2 - c
+            dr = r_2 - r
+            dist = abs(dc) + abs(dr)
+            distances[(c_2, r_2)] = dist
+
+        # sort the locations by their distances and return
+        result = sorted(distances.items(), key=lambda kv: kv[1])
+            # if dist < so_far:
+            #     result = (c_2, r_2)
+            #     so_far = dist
+        return result
+
+
 
     def bfs(self, start: (int, int), dest: (int, int)) -> [(int, int)]:
         """(Map, (int, int), (int, int)) -> [(int, int)]

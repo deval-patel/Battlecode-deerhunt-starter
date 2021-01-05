@@ -2,7 +2,7 @@
 
 import argparse
 import socket
-# import sys
+import sys
 from controller import NetworkedController
 from grid_player import GridPlayer
 
@@ -13,6 +13,8 @@ args = parser.parse_args()
 
 sock = socket.socket()
 sock.connect((args.host, args.port))
+
+sys.stdout = None
 
 player = GridPlayer()
 controller = NetworkedController(sock, player)
