@@ -219,9 +219,6 @@ class Map:
 
         # sort the locations by their distances and return
         result = sorted(distances.items(), key=lambda kv: kv[1])
-            # if dist < so_far:
-            #     result = (c_2, r_2)
-            #     so_far = dist
         return result
 
 

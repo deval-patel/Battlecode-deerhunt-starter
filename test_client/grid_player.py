@@ -20,16 +20,8 @@ class GridPlayer:
     def mark_moved(self, pos, direction):
         # Mark the new pos as a wall
         coord = coordinate_from_direction(pos[0], pos[1], direction)
-        # x, y = pos
-        # if direction == 'LEFT':
-        #     coord = (x - 1, y)
-        # if direction == 'RIGHT':
-        #     coord = (x + 1, y)
-        # if direction == 'UP':
-        #     coord = (x, y - 1)
-        # if direction == 'DOWN':
-        #     coord = (x, y + 1)
-        self.map.set_tile(coord[0], coord[1], 'x')
+        self.map.set_tile(coord[0], coord[1], 'X')
+        self.map.set_tile(pos[0], pos[1], ' ')
 
 
     def get_melee_move(self, unit: Unit, enemy_units: Units,
@@ -58,14 +50,14 @@ class GridPlayer:
         if cr:
             for (loc, dist) in cr:
                 # Check the guard field to see if there is already a guard
-                if self.resource_mapping[loc][1]:
+                if (self.resource_mapping[loc])[1] is not None:
                     continue
                 # Go towards this resource and guard it
                 pos = self.get_melee_resource_pos(unit, loc)
                 if pos:
-                    self.resource_mapping[loc][1] = unit
+                    (self.resource_mapping[loc])[1] = unit
                     # Mark the new pos as a wall
-                    self.mark_moved(pos, unit.direction_to(pos))
+                    self.mark_moved(unit.position(), unit.direction_to(pos))
                     return unit.move_towards(pos)
         return None
 
@@ -99,6 +91,7 @@ class GridPlayer:
     def construct_resource_mapping(self):
         # Construct a resource mapping, where the first is the assigned worker and second
         # is the assigned guard
+        self.resource_mapping = {}
         all_resources = self.map.find_all_resources()
         for r in all_resources:
             self.resource_mapping[r] = [None, None]
@@ -106,13 +99,13 @@ class GridPlayer:
 
     def get_worker_move(self, unit: Unit, enemy_units: Units,
                         resources: int, turns_left: int) -> Move:
-        # If we can mine, mine
-        if unit.can_mine(self.map):
-            return unit.mine()
-
         # If already mining, return none
-        elif unit.attr['mining_status'] > 0:
+        if unit.attr['mining_status'] > 0:
             return None
+
+        # If we can mine, mine
+        elif unit.can_mine(self.map):
+            return unit.mine()
 
         # Go towards an unoccupied resource
         cr = self.map.closest_resources_all(unit)
@@ -120,13 +113,13 @@ class GridPlayer:
         if cr:
             for (loc, dist) in cr:
                 # Check the worker field to see if there is already a worker
-                if self.resource_mapping[loc][0]:
+                if (self.resource_mapping[loc])[0] is not None:
                     continue
                 # Go towards this resource to mine it
                 path = self.map.bfs(unit.position(), loc)
                 if path and len(path) > 1:
-                    self.resource_mapping[loc][0] = unit
-                    self.mark_moved(path[1], unit.direction_to(path[1]))
+                    (self.resource_mapping[loc])[0] = unit
+                    self.mark_moved(unit.position(), unit.direction_to(path[1]))
                     return unit.move_towards(path[1])
         return None
 
@@ -151,6 +144,9 @@ class GridPlayer:
         # assign current num of resources
         self.resources = resources
         self.construct_resource_mapping()
+
+        self.attacking = {}
+        self.stunning = {}
 
         # get all worker units
         workers = your_units.get_all_unit_of_type('worker')
