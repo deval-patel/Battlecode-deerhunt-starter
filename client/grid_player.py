@@ -1,3 +1,4 @@
+from socket import AddressInfo
 from helper_classes import *
 import random
 
@@ -133,6 +134,66 @@ class GridPlayer:
 
         self.map = Map(grid)
 
+    def check_duplicate_workers(self, unit, all_units, resources, turns):
+        """
+        returns True if need to duplicate worker"
+        """
+        # get all the worker units
+        workers = all_units.get_all_unit_of_type('worker')
+
+        # number of workers
+        num_workers = len(workers)
+
+        # worker locations and resource locations  
+        worker_locations = [i.position() for i in workers]
+        resource_locations = self.map.find_all_resources()
+
+        if num_workers < len(resource_locations):
+            dist = inf
+            closest_worker = None
+            # this finds the closest worker to the unoccupied location, need to figure out a way
+            # to avoid double calc
+            for worker in workers:
+                for resource in resource_locations:
+                    temp = self.map.bfs(worker.position(), resource)
+                    if (resource != worker.position()) and (temp < dist):
+                        dist = temp
+                        closest_worker = worker
+            if (closest_worker != None) and (turns > 4 + dist + 5) and (resources > 50):
+                return True
+            else:
+                return False
+      
+    def check_duplicate_melee(self, all_units, enemy_units, resources, turns):
+        """
+        returns True if need to duplicate melee
+        mostly similar to the one above
+        """
+        # get all the worker units
+        melees = all_units.get_all_unit_of_type('melee')
+
+        # number of workers
+        num_melee = len(melees)
+
+        # melee locations and resource locations  
+        melee_locations = [i.position() for i in melees]
+        resource_locations = self.map.find_all_resources()
+
+        if num_melee < len(resource_locations):
+            dist = inf
+            closest_melee = None
+            # this finds the closest worker to the unoccupied location, need to figure out a way
+            # to avoid double calc
+            for melee in melees:
+                for resource in resource_locations:
+                    temp = self.map.bfs(melee.position(), resource) # need to check a diff cond since melee will almost never be on resource
+                    if (resource != melee.position()) and (temp < dist):
+                        dist = temp
+                        closest_melee = melee
+            if (closest_melee != None) and (turns > 4 + dist) and (resources > 100):
+                return True
+            else:
+                return False
 
     def tick(self, game_map: Map, your_units: Units, enemy_units: Units,
              resources: int, turns_left: int) -> [Move]:
