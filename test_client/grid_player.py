@@ -1,4 +1,5 @@
 from helper_classes import *
+import random
 
 
 class GridPlayer:
@@ -69,7 +70,7 @@ class GridPlayer:
         """
         positions = []
         x, y = loc
-        perimeter = [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
+        perimeter = [(y-1, x), (y+1, x), (y, x-1), (y, x+1)]
         for pos in perimeter:
             # If the position is a wall or resource skip
             if self.map.is_wall(pos[0], pos[1]) or self.map.is_resource(pos[0], pos[1]):
