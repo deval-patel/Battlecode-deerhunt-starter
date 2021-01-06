@@ -154,10 +154,10 @@ class Map:
         Preconditions: x >= 0
                        y >= 0
         """
-        return self.grid[x][y]
+        return self.grid[y][x]
 
     def set_tile(self, x:int, y:int, token: str):
-        self.grid[x][y] = token
+        self.grid[y][x] = token
 
     def is_wall(self, x: int, y: int) -> bool:
         """
@@ -165,7 +165,7 @@ class Map:
         Preconditions: x >= 0
                        y >= 0
         """
-        return self.grid[x][y].lower() == 'x'
+        return self.grid[y][x].lower() == 'x'
 
     def is_resource(self, x: int, y: int) -> bool:
         """
@@ -173,7 +173,7 @@ class Map:
         Preconditions: x >= 0
                        y >= 0
         """
-        return self.grid[x][y].lower() == 'r'
+        return self.grid[y][x].lower() == 'r'
 
     def find_all_resources(self) -> [(int, int)]:
         """
@@ -236,22 +236,22 @@ class Map:
         graph = self.grid
         queue = [[start]]
         vis = set(start)
-        if start == dest or graph[start[0]][start[1]] == 'X' or \
-                not (0 < start[0] < len(graph)-1
-                     and 0 < start[1] < len(graph[0])-1):
+        if start == dest or graph[start[1]][start[0]] == 'X' or \
+                not (0 < start[1] < len(graph[0])-1
+                     and 0 < start[0] < len(graph)-1):
             return None
 
         while queue:
             path = queue.pop(0)
             node = path[-1]
-            r = node[0]
-            c = node[1]
+            r = node[1]
+            c = node[0]
 
             if node == dest:
                 return path
-            for adj in ((r+1, c), (r-1, c), (r, c+1), (r, c-1)):
-                if (graph[adj[0]][adj[1]] == ' ' or
-                        graph[adj[0]][adj[1]] == 'R') and adj not in vis:
+            for adj in ((c+1, r), (c-1, r), (c, r+1), (c, r-1)):
+                if (graph[adj[1]][adj[0]] == ' ' or
+                        graph[adj[1]][adj[0]] == 'R') and adj not in vis:
                     queue.append(path + [adj])
                     vis.add(adj)
 
