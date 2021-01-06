@@ -1,4 +1,5 @@
 from helper_classes import *
+import random
 
 
 class GridPlayer:
@@ -8,6 +9,7 @@ class GridPlayer:
     resources: int
     resource_mapping: dict
 
+class GridPlayer:
     def __init__(self):
         self.foo = True
         self.map = None

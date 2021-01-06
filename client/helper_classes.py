@@ -154,10 +154,10 @@ class Map:
         Preconditions: x >= 0
                        y >= 0
         """
-        return self.grid[y][x]
+        return self.grid[x][y]
 
     def set_tile(self, x:int, y:int, token: str):
-        self.grid[y][x] = token
+        self.grid[x][y] = token
 
     def is_wall(self, x: int, y: int) -> bool:
         """
@@ -165,7 +165,7 @@ class Map:
         Preconditions: x >= 0
                        y >= 0
         """
-        return self.grid[y][x].lower() == 'x'
+        return self.grid[x][y].lower() == 'x'
 
     def is_resource(self, x: int, y: int) -> bool:
         """
@@ -173,7 +173,7 @@ class Map:
         Preconditions: x >= 0
                        y >= 0
         """
-        return self.grid[y][x].lower() == 'r'
+        return self.grid[x][y].lower() == 'r'
 
     def find_all_resources(self) -> [(int, int)]:
         """
@@ -191,36 +191,40 @@ class Map:
         Returns the coordinates of the closest resource to <unit>.
         """
         locations = self.find_all_resources()
-        c, r = unit.position()
         result = None
-        so_far = 999999
-        for (c_2, r_2) in locations:
-            dc = c_2-c
-            dr = r_2-r
-            dist = abs(dc) + abs(dr)
+        so_far = float('inf')
+        for loc in locations:
+            # Call bfs to find the resource with shortest path
+            path = self.bfs(unit.position(), loc)
+            if not path:
+                dist = float('inf')
+            else:
+                # -1 because path includes the starting position as first index
+                dist = len(path) - 1
             if dist < so_far:
-                result = (c_2, r_2)
+                result = loc
                 so_far = dist
+
         return result
 
     def closest_resources_all(self, unit: Unit) -> [(int, int)]:
         """
-        Returns the coordinates of the resources from closest to furthest to <unit>
+        Returns all the coordinates of the resources sorted from closest to furthest to <unit>
         """
         locations = self.find_all_resources()
-        c, r = unit.position()
-        result = None
         distances = {}
-        for (c_2, r_2) in locations:
-            dc = c_2 - c
-            dr = r_2 - r
-            dist = abs(dc) + abs(dr)
-            distances[(c_2, r_2)] = dist
+        for loc in locations:
+            path = self.bfs(unit.position(), loc)
+            if not path:
+                dist = float('inf')
+            else:
+                dist = len(path) - 1
+            # Add the location to the dictionary with its distance
+            distances[loc] = dist
 
         # sort the locations by their distances and return
         result = sorted(distances.items(), key=lambda kv: kv[1])
         return result
-
 
 
     def bfs(self, start: (int, int), dest: (int, int)) -> [(int, int)]:
@@ -232,22 +236,22 @@ class Map:
         graph = self.grid
         queue = [[start]]
         vis = set(start)
-        if start == dest or graph[start[1]][start[0]] == 'X' or \
-                not (0 < start[0] < len(graph[0])-1
-                     and 0 < start[1] < len(graph)-1):
+        if start == dest or graph[start[0]][start[1]] == 'X' or \
+                not (0 < start[0] < len(graph)-1
+                     and 0 < start[1] < len(graph[0])-1):
             return None
 
         while queue:
             path = queue.pop(0)
             node = path[-1]
-            r = node[1]
-            c = node[0]
+            r = node[0]
+            c = node[1]
 
             if node == dest:
                 return path
-            for adj in ((c+1, r), (c-1, r), (c, r+1), (c, r-1)):
-                if (graph[adj[1]][adj[0]] == ' ' or
-                        graph[adj[1]][adj[0]] == 'R') and adj not in vis:
+            for adj in ((r+1, c), (r-1, c), (r, c+1), (r, c-1)):
+                if (graph[adj[0]][adj[1]] == ' ' or
+                        graph[adj[0]][adj[1]] == 'R') and adj not in vis:
                     queue.append(path + [adj])
                     vis.add(adj)
 
@@ -305,3 +309,40 @@ def coordinate_from_direction(x: int, y: int, direction: str) -> (int, int):
         return (x, y-1)
     if direction == 'DOWN':
         return (x, y+1)
+
+
+"""
+Run this code to test map methods. 
+Currently it makes a simple grid and prints out: 
+    The grid
+    Locations of all resources
+    Closest Resource
+    All resources sorted by closest distance 
+    Path from current start position to the closest resource
+"""
+if __name__ == '__main__':
+    size = 7
+    grid = [['X', 'X', 'X', 'X', 'X', 'X', 'X'],
+            ['X', ' ', 'X', 'R', ' ', ' ', 'X'],
+            ['X', ' ', 'X', ' ', ' ', ' ', 'X'],
+            ['X', ' ', 'X', ' ', ' ', ' ', 'X'],
+            ['X', ' ', 'R', ' ', ' ', 'R', 'X'],
+            ['X', 'X', 'X', ' ', ' ', ' ', 'X'],
+            ['X', 'X', 'X', 'X', 'X', 'X', 'X']]
+    map = Map(grid)
+    all = map.find_all_resources()
+    start = (1, 1)
+    attr = {'type': 'worker', 'x': start[0], 'y': start[1], 'id': 0}
+    unit = Unit(attr)
+    map.set_tile(start[0], start[1], 'w')
+    closest = map.closest_resources(unit)
+    closest_all = map.closest_resources_all(unit)
+    print(f"Grid:\n")
+    for i in range(size):
+        print(grid[i])
+    print(f"\nAll Resources: {all}")
+    print(f"Closest Resource: {closest}")
+    print(f"All Resources sorted by closest distance: {closest_all}")
+    end = closest
+    path = map.bfs(start, end)
+    print(f"Path from {start} -> {end}: {path}")
