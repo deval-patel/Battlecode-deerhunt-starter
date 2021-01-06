@@ -20,6 +20,7 @@ args = parser.parse_args()
 #Creates and connects the socket connection to the clients
 sock = socket.socket()
 host = socket.gethostname()
+print(host)
 sock.bind((host, args.port))
 
 sock.settimeout(7)
