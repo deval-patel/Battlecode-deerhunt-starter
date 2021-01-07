@@ -62,6 +62,14 @@ class GridPlayer:
         self.map.set_tile(coord[0], coord[1], 'X')
         self.map.set_tile(pos[0], pos[1], ' ')
 
+    def get_dup_loc(self, pos):
+        dirs = ['DOWN', 'UP', 'RIGHT', 'LEFT']
+        for dir in dirs:
+            temp = get_moved_pos(pos, dir)
+            if self.map.get_tile(temp[0], temp[1]) == ' ':
+                return dir
+        return None
+
     def construct_resource_mapping(self):
         # Construct a resource mapping, where the first is the assigned worker and second
         # is the assigned guard
@@ -70,42 +78,67 @@ class GridPlayer:
         for r in all_resources:
             self.resource_mapping[r] = [None, None]
 
-    def get_melee_move(self, unit: Unit, enemy_units: Units,
-                       resources: int, turns_left: int) -> Move:
-        # If we can attack an enemy, do this
-        can_attack = unit.can_attack(enemy_units)
-        can_stun = unit.can_stun(enemy_units)
-        if can_attack:
-            for enemy in can_attack:
-                # If enemy is already being attacked then skip
-                if enemy in self.attacking:
-                    continue
-                # Attack this enemy
-                self.attacking[enemy] = unit
-                # Mark the new pos as a wall
-                self.mark_moved(unit.position(), enemy[1])
-                # Attack with this unit towards the enemy's direction
-                return unit.attack(enemy[1])
+    def check_duplicate_workers(self, workers, resources, turns):
+        """
+        returns True if need to duplicate worker"
+        """
+        # number of workers
+        num_workers = len(workers)
 
-        # If we can stun an enemy do this
-        # do this later
+        # worker locations and resource locations
+        worker_locations = [i.position() for i in workers]
+        resource_locations = self.map.find_all_resources()
 
-        # Move towards a resource unit
-        cr = self.map.closest_resources_all(unit)
-        # If there is a closest resource
-        if cr:
-            for (loc, dist) in cr:
-                # Check the guard field to see if there is already a guard
-                if (self.resource_mapping[loc])[1] is not None:
-                    continue
-                # Go towards this resource and guard it
-                pos = self.get_melee_resource_pos(unit, loc)
-                if pos:
-                    (self.resource_mapping[loc])[1] = unit
-                    # Mark the new pos as a wall
-                    self.mark_moved(unit.position(), unit.direction_to(pos))
-                    return unit.move_towards(pos)
-        return None
+        if num_workers < len(resource_locations):
+            dist = float('inf')
+            closest_worker = None
+            # this finds the closest worker to the unoccupied location, need to figure out a way
+            # to avoid double calc
+            for worker in workers:
+                for resource in resource_locations:
+                    temp = self.map.bfs(worker.position(), resource)
+                    if temp:
+                        temp = len(temp) - 1
+                        if (resource != worker.position()) and (temp < dist):
+                            dist = temp
+                            closest_worker = worker
+            if closest_worker and (turns > 4 + dist + 5) and (resources > 50):
+                return closest_worker
+            else:
+                return None
+
+    def check_duplicate_melee(self, melees, resources, turns):
+        """
+        returns True if need to duplicate melee
+        mostly similar to the one above
+        """
+        # number of workers
+        num_melee = len(melees)
+
+        # melee locations and resource locations
+        melee_locations = [i.position() for i in melees]
+        resource_locations = self.map.find_all_resources()
+
+        if num_melee < len(resource_locations):
+            dist = float('inf')
+            closest_melee = None
+            # this finds the closest worker to the unoccupied location, need to figure out a way
+            # to avoid double calc
+            for melee in melees:
+                for resource in resource_locations:
+                    temp = self.map.bfs(melee.position(),
+                                        self.get_melee_resource_pos(melee,
+                                                                    resource))  # need to check a diff cond since melee will almost never be on resource
+                    if temp:
+                        temp = len(temp) - 1
+
+                        if (resource != melee.position()) and (temp < dist):
+                            dist = temp
+                            closest_melee = melee
+            if closest_melee and (turns > 4 + dist) and (resources > 100):
+                return closest_melee
+            else:
+                return None
 
     def get_melee_resource_pos(self, unit: Unit, loc: (int, int)):
         """
@@ -141,7 +174,7 @@ class GridPlayer:
         return None
 
     def get_all_melee_moves(self, melees: [Unit], enemy_units: Units,
-                             resources: int, turns_left: int) -> [Move]:
+                            resources: int, turns_left: int, toDup: Unit, dupType: str) -> [Move]:
         moves = []
         crs = {}
         positions = {}
@@ -161,6 +194,11 @@ class GridPlayer:
 
             # ADD STUNNING HERE
             # We want to move towards our destination, add this unit to the people we need to path for
+            elif toDup:
+                if unit.id == toDup.id:
+                    dir = self.get_dup_loc(unit.position())
+                    if dir:
+                        moves.append(unit.duplicate(dir, dupType))
             crs[unit] = self.map.closest_resources_all(unit)
             positions[unit.position()] = unit
 
@@ -201,7 +239,7 @@ class GridPlayer:
                     # if this worker is unassigned
                     if w in unassigned:
                         path = self.map.bfs(w.position(), res)
-                        if len(path) - 1 < dist:
+                        if path and len(path) - 1 < dist:
                             dist = len(path) - 1
                             best = w
                 if best:
@@ -223,20 +261,29 @@ class GridPlayer:
         return moves, movements
 
     def get_all_worker_moves(self, workers: [Unit], enemy_units: Units,
-                             resources: int, turns_left: int) -> [Move]:
+                             resources: int, turns_left: int, toDup: Unit, dupType: str) -> [Move]:
         moves = []
         crs = {}
         positions = {}
+
         for unit in workers:
             # If already mining, then skip
             if 'mining_status' in unit.attr and unit.attr['mining_status'] > 0:
                 continue
+            # If we can duplicate, duplicate
+            elif toDup:
+                if unit.id == toDup.id:
+                    dir = self.get_dup_loc(unit.position())
+                    if dir:
+                        moves.append(unit.duplicate(dir, dupType))
             # If we can mine, then start mining
             elif unit.can_mine(self.map):
                 moves.append(unit.mine())
-            # We want to move towards our destination, add this unit to the people we need to path for
-            crs[unit] = self.map.closest_resources_all(unit)
-            positions[unit.position()] = unit
+
+            else:
+                # We want to move towards our destination, add this unit to the people we need to path for
+                crs[unit] = self.map.closest_resources_all(unit)
+                positions[unit.position()] = unit
 
         # Need to decide which resource to assign each unit.
         # Assign the resource to the unit closest to it.
@@ -273,7 +320,7 @@ class GridPlayer:
                     # if this worker is unassigned
                     if w in unassigned:
                         path = self.map.bfs(w.position(), res)
-                        if len(path) - 1 < dist:
+                        if path and len(path) - 1 < dist:
                             dist = len(path) - 1
                             best = w
                 if best:
@@ -322,6 +369,15 @@ class GridPlayer:
 
         # get all melee units
         melees = your_units.get_all_unit_of_type('melee')
+
+        toDupWorker = self.check_duplicate_workers(workers, resources, turns_left)
+        toDupMelee = self.check_duplicate_melee(melees, resources, turns_left)
+        if toDupWorker:
+            toDup = toDupWorker
+            dupType = 'worker'
+        else:
+            toDup = toDupMelee
+            dupType = 'melee'
         """
         # prioritize movement of melees
         for unit in melees:
@@ -334,8 +390,8 @@ class GridPlayer:
         #     move = self.get_worker_move(unit, enemy_units, resources, turns_left)
         #     if move:
         #         moves.append(move)
-        melee_moves, melee_movements = self.get_all_melee_moves(melees, enemy_units, resources, turns_left)
-        worker_moves, worker_movements = self.get_all_worker_moves(workers, enemy_units, resources, turns_left)
+        melee_moves, melee_movements = self.get_all_melee_moves(melees, enemy_units, resources, turns_left, toDup, dupType)
+        worker_moves, worker_movements = self.get_all_worker_moves(workers, enemy_units, resources, turns_left, toDup, dupType)
         moves.extend(melee_moves)
         moves.extend(worker_moves)
         movements.extend(melee_movements)
